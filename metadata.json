@@ -1,0 +1,8 @@
+{
+  "name": "American English Mastery & Fluency Coach",
+  "description": "An AI-powered coach to help you master American English pronunciation, rhythm, and advanced vocabulary through interactive reading challenges and real-time voice feedback.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera"
+  ]
+}

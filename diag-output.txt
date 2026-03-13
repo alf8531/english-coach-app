@@ -1,0 +1,24 @@
+=== Testing timedtext API ===
+fmt=vtt: status=200 length=0
+fmt=srv1: status=200 length=0
+fmt=srv2: status=200 length=0
+fmt=srv3: status=200 length=0
+fmt=ttml: status=200 length=0
+
+=== Testing InnerTube API ===
+InnerTube status: 400 length: 274
+First 300: {
+  "error": {
+    "code": 400,
+    "message": "Precondition check failed.",
+    "errors": [
+      {
+        "message": "Precondition check failed.",
+        "domain": "global",
+        "reason": "failedPrecondition"
+      }
+    ],
+    "status": "FAILED_PRECONDITION"
+  }
+}
+

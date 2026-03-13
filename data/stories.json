@@ -1,0 +1,168 @@
+[
+    {
+        "id": "ep_01_office",
+        "title": "The Stolen Laptop",
+        "description": "A valuable prototype laptop was taken from the locked tech lab.",
+        "level": "B1 (Intermediate)",
+        "grammarTopic": "Past Continuous vs Past Simple",
+        "isPublished": true,
+        "isDailyCase": true,
+        "dailyDate": "2026-03-13",
+        "coverImageUrl": "https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=800&q=80",
+        "suspects": [
+            {
+                "name": "Alex",
+                "role": "Lead Engineer",
+                "avatarSeed": "Alex",
+                "isInitiallyUnlocked": true
+            },
+            {
+                "name": "Sam",
+                "role": "Night Security",
+                "avatarSeed": "Sam",
+                "isInitiallyUnlocked": true
+            },
+            {
+                "name": "Jordan",
+                "role": "Cleaning Staff",
+                "avatarSeed": "Jordan",
+                "isInitiallyUnlocked": true
+            }
+        ],
+        "availableClues": [
+            {
+                "id": "clue_1",
+                "name": "Security Log",
+                "discoveredAtDialogueId": "d_sam_2",
+                "description": "The security log shows the lab door was opened at 10:15 PM."
+            },
+            {
+                "id": "clue_2",
+                "name": "Wet Footprints",
+                "discoveredAtDialogueId": "d_jordan_1",
+                "description": "Wet footprints were found near the desk, but the floor was supposedly mopped hours ago."
+            }
+        ],
+        "solution": {
+            "culpritName": "Jordan",
+            "keyEvidenceId": "clue_2",
+            "explanation": "Jordan claimed to be cleaning the cafeteria at 10:15 PM, but the wet footprints in the lab matched their shoes, proving they were the one who entered the room when the laptop went missing.",
+            "languageTakeaways": [
+                "While I was cleaning... (Past Continuous for interrupted actions)",
+                "The footprints matched... (Vocabulary: match, footprints)"
+            ]
+        },
+        "scenes": [
+            {
+                "name": "Interrogation Room",
+                "dialogues": [
+                    {
+                        "id": "d_alex_1",
+                        "character": "Alex",
+                        "text": "I left the lab around 8:00 PM. I was working on the new code when my wife called me.",
+                        "expression": "neutral"
+                    },
+                    {
+                        "id": "d_alex_2",
+                        "character": "Alex",
+                        "text": "I didn't see anyone enter the lab. Only three people have the keycard.",
+                        "expression": "neutral",
+                        "quiz": {
+                            "type": "true-false",
+                            "prompt": "Identify the lie based on typical office access",
+                            "sentence": "Only three people have the keycard.",
+                            "correctAnswer": "true"
+                        }
+                    },
+                    {
+                        "id": "d_sam_1",
+                        "character": "Sam",
+                        "text": "I was checking the cameras on the first floor at 10:00 PM.",
+                        "expression": "neutral"
+                    },
+                    {
+                        "id": "d_sam_2",
+                        "character": "Sam",
+                        "isHiddenClue": true,
+                        "text": "The log shows the lab was opened at exactly 10:15 PM. I remember it clearly.",
+                        "expression": "suspicious"
+                    },
+                    {
+                        "id": "d_jordan_1",
+                        "character": "Jordan",
+                        "isHiddenClue": true,
+                        "text": "I mopped the lab floor at 6:00 PM. I didn't go back in there. I was cleaning the cafeteria at 10:15 PM.",
+                        "expression": "nervous"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "id": "ep_02_cafe",
+        "title": "The Poisoned Coffee",
+        "description": "A famous critic was poisoned at the local cafe. Who tampered with the drink?",
+        "level": "A2 (Beginner)",
+        "grammarTopic": "Simple Past",
+        "isPublished": true,
+        "isDailyCase": false,
+        "coverImageUrl": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=800&q=80",
+        "suspects": [
+            {
+                "name": "Mia",
+                "role": "Barista",
+                "avatarSeed": "Mia",
+                "isInitiallyUnlocked": true
+            },
+            {
+                "name": "Leo",
+                "role": "Rival Critic",
+                "avatarSeed": "Leo",
+                "isInitiallyUnlocked": true
+            }
+        ],
+        "availableClues": [
+            {
+                "id": "clue_cafe_1",
+                "name": "Sugar Packet",
+                "discoveredAtDialogueId": "d_leo_2",
+                "description": "An empty packet of rare sweetener was found near Leo's table."
+            }
+        ],
+        "solution": {
+            "culpritName": "Leo",
+            "keyEvidenceId": "clue_cafe_1",
+            "explanation": "Leo claimed he didn't stand up, but the rare sweetener packet found near his table proved he was near the bar where the coffee was made.",
+            "languageTakeaways": [
+                "I was sitting... (Past Continuous)",
+                "Tamper (Verb: to interfere with)"
+            ]
+        },
+        "scenes": [
+            {
+                "name": "Cafe Counter",
+                "dialogues": [
+                    {
+                        "id": "d_mia_1",
+                        "character": "Mia",
+                        "text": "I gave him his coffee at 9:00 AM. He seemed perfectly fine.",
+                        "expression": "neutral"
+                    },
+                    {
+                        "id": "d_leo_1",
+                        "character": "Leo",
+                        "text": "I was sitting by the window the entire morning reading the news.",
+                        "expression": "neutral"
+                    },
+                    {
+                        "id": "d_leo_2",
+                        "character": "Leo",
+                        "isHiddenClue": true,
+                        "text": "I only got up once to ask for some sugar for my tea, but I didn't go near his table.",
+                        "expression": "nervous"
+                    }
+                ]
+            }
+        ]
+    }
+]

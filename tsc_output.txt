@@ -1,0 +1,42 @@
+components/App.tsx(3,80): error TS2305: Module '"../types"' has no exported member 'SRSLevel'.
+components/App.tsx(6,26): error TS2307: Cannot find module './components/AnalysisView' or its corresponding type declarations.
+components/App.tsx(7,23): error TS2307: Cannot find module './components/LiveCoach' or its corresponding type declarations.
+components/App.tsx(8,28): error TS2307: Cannot find module './components/FlashcardsView' or its corresponding type declarations.
+components/App.tsx(9,27): error TS2307: Cannot find module './components/SelectionMenu' or its corresponding type declarations.
+components/App.tsx(10,29): error TS2307: Cannot find module './components/VoiceAskOverlay' or its corresponding type declarations.
+components/App.tsx(11,26): error TS2307: Cannot find module './components/ListeningLab' or its corresponding type declarations.
+components/App.tsx(12,29): error TS2307: Cannot find module './components/WritingWorkshop' or its corresponding type declarations.
+components/App.tsx(13,22): error TS2307: Cannot find module './components/DeepChat' or its corresponding type declarations.
+components/App.tsx(20,73): error TS2551: Property 'INTERMEDIATE' does not exist on type 'typeof ProficiencyLevel'. Did you mean 'Intermediate'?
+components/App.tsx(192,33): error TS2339: Property 'phoneticSpelling' does not exist on type 'HighlightedPhrase'.
+components/App.tsx(194,55): error TS2551: Property 'examples' does not exist on type 'HighlightedPhrase'. Did you mean 'example'?
+components/App.tsx(194,74): error TS2551: Property 'examples' does not exist on type 'HighlightedPhrase'. Did you mean 'example'?
+components/App.tsx(195,7): error TS2820: Type '"New"' is not assignable to type '"new" | "learning" | "review" | "mastered"'. Did you mean '"new"'?
+components/App.tsx(333,72): error TS2353: Object literal may only specify known properties, and 'phoneticSpelling' does not exist in type 'HighlightedPhrase'.
+components/DeepChat.tsx(3,23): error TS2305: Module '"../types"' has no exported member 'PronunciationAnalysis'.
+components/GrammarMystery.tsx(287,47): error TS2322: Type '{ key: any; clue: any; index: any; onAnswer: any; }' is not assignable to type '{ clue: MysteryClue; index: number; onAnswer: (clueId: string, answer: string) => void; }'.
+  Property 'key' does not exist on type '{ clue: MysteryClue; index: number; onAnswer: (clueId: string, answer: string) => void; }'.
+components/HealthCheck.tsx(16,41): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+components/ListeningLab.tsx(3,28): error TS2305: Module '"../types"' has no exported member 'NativeScene'.
+components/ListeningLab.tsx(3,41): error TS2305: Module '"../types"' has no exported member 'RoleplayAnalysis'.
+components/ListeningLab.tsx(20,89): error TS2551: Property 'INTERMEDIATE' does not exist on type 'typeof ProficiencyLevel'. Did you mean 'Intermediate'?
+components/MediaLab.tsx(24,23): error TS2339: Property 'aistudio' does not exist on type 'Window & typeof globalThis'.
+components/MediaLab.tsx(25,20): error TS2339: Property 'aistudio' does not exist on type 'Window & typeof globalThis'.
+components/StoryCMS.tsx(47,15): error TS2739: Type '{ id: string; title: string; description: string; level: ProficiencyLevel.Beginner; scenes: undefined[]; availableClues: undefined[]; isPublished: false; ts: number; }' is missing the following properties from type 'StoryEpisode': suspects, solution
+components/StoryCMS.tsx(73,19): error TS2739: Type '{ id: string; title: any; description: any; level: any; isPublished: false; ts: number; availableClues: undefined[]; scenes: any; }' is missing the following properties from type 'StoryEpisode': suspects, solution
+services/geminiService.ts(28,27): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+services/geminiService.ts(79,114): error TS2304: Cannot find name 'PronunciationAnalysis'.
+services/geminiService.ts(141,13): error TS2304: Cannot find name 'PronunciationAnalysis'.
+services/geminiService.ts(151,25): error TS2339: Property 'text' does not exist on type 'ChatMessage'.
+services/geminiService.ts(404,7): error TS2353: Object literal may only specify known properties, and 'overallFeedback' does not exist in type 'AnalysisResult'.
+services/geminiService.ts(418,111): error TS2304: Cannot find name 'RoleplayAnalysis'.
+services/geminiService.ts(456,95): error TS2304: Cannot find name 'NativeScene'.
+services/geminiService.ts(460,25): error TS2551: Property 'BEGINNER' does not exist on type 'typeof ProficiencyLevel'. Did you mean 'Beginner'?
+services/geminiService.ts(461,25): error TS2551: Property 'INTERMEDIATE' does not exist on type 'typeof ProficiencyLevel'. Did you mean 'Intermediate'?
+services/geminiService.ts(462,25): error TS2551: Property 'ADVANCED' does not exist on type 'typeof ProficiencyLevel'. Did you mean 'Advanced'?
+services/geminiService.ts(503,57): error TS2304: Cannot find name 'SceneScriptPart'.
+services/geminiService.ts(506,44): error TS2551: Property 'BEGINNER' does not exist on type 'typeof ProficiencyLevel'. Did you mean 'Beginner'?
+services/geminiService.ts(506,91): error TS2551: Property 'INTERMEDIATE' does not exist on type 'typeof ProficiencyLevel'. Did you mean 'Intermediate'?
+services/geminiService.ts(531,67): error TS2304: Cannot find name 'NativeScene'.
+services/geminiService.ts(690,47): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+services/geminiService.ts(1021,12): error TS2554: Expected 4 arguments, but got 2.
