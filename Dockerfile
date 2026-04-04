@@ -24,6 +24,8 @@ RUN npm install
 COPY . .
 
 # Build the frontend
+ARG VITE_GEMINI_API_KEY
+ENV VITE_GEMINI_API_KEY=$VITE_GEMINI_API_KEY
 RUN npm run build
 
 # Expose the port the server listens on
