@@ -310,15 +310,15 @@ export const YouTubeShadowing: React.FC<Props> = ({ onBack, accentPreference }) 
         activeIdxRef.current = 0;
         setPhase('watch');
 
-        // Init player instantly while transcript loads in background
-        setTimeout(() => initPlayer(id), 0);
-
         try {
             const lines = await generateYouTubeTranscript(id);
             if (lines.length === 0) throw new Error('No captions found for this video');
             setTranscript(lines);
             setActiveLineIdx(0);
             activeIdxRef.current = 0;
+            
+            // Init player only AFTER transcript has successfully resolved and populated
+            setTimeout(() => initPlayer(id), 0);
         } catch (err: any) {
             console.error('Transcript load failed:', err);
             setTranscriptError(err.message || 'No captions found for this video');

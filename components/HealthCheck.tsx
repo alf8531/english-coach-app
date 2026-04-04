@@ -3,6 +3,12 @@ import { GoogleGenAI } from "@google/genai";
 
 export const HealthCheck = () => {
     const [status, setStatus] = useState<string>('Checking...');
+    const [isVisible, setIsVisible] = useState<boolean>(true);
+
+    useEffect(() => {
+        const timer = setTimeout(() => setIsVisible(false), 4000);
+        return () => clearTimeout(timer);
+    }, []);
 
     useEffect(() => {
         const checkAPI = async () => {
@@ -39,6 +45,8 @@ export const HealthCheck = () => {
 
         checkAPI();
     }, []);
+
+    if (!isVisible) return null;
 
     return (
         <div style={{ position: 'fixed', bottom: 10, right: 10, background: 'black', color: 'white', padding: '10px 15px', zIndex: 9999, borderRadius: 8, fontSize: '14px', maxWidth: '400px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
