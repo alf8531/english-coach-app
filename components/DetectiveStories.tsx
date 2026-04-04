@@ -409,9 +409,9 @@ const DetectiveStories: React.FC<Props> = ({ onBack, userLevel, onSaveVocab }) =
             <div className="min-h-screen bg-black text-white flex flex-col font-sans">
                 <div className="p-6 border-b border-white/10">
                     <button onClick={() => setCurrentView('suspect-hub')} className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors">
-                        <ChevronLeft size={20} /> Volver
+                        <ChevronLeft size={20} /> Back
                     </button>
-                    <h1 className="text-2xl font-black mt-4">⚖️ Emite tu veredicto</h1>
+                    <h1 className="text-2xl font-black mt-4">⚖️ Deliver your verdict</h1>
                     <p className="text-slate-400 text-sm mt-1">{playingEpisode.title}</p>
                 </div>
                 <div className="flex-1 overflow-y-auto p-6 space-y-8">
@@ -601,7 +601,7 @@ const DetectiveStories: React.FC<Props> = ({ onBack, userLevel, onSaveVocab }) =
                         );
                     })}
 
-                    {isAsking && <div className="text-slate-500 italic text-sm px-4">El testigo está pensando...</div>}
+                    {isAsking && <div className="text-slate-500 italic text-sm px-4">The witness is thinking...</div>}
                     <div ref={messagesEndRef} />
                 </div>
 
@@ -612,7 +612,7 @@ const DetectiveStories: React.FC<Props> = ({ onBack, userLevel, onSaveVocab }) =
                             <button onClick={startVoiceInput} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-blue-400 hover:bg-white/20 shrink-0">
                                 <Mic size={18} />
                             </button>
-                            <input type="text" value={inquiryText} onChange={e => setInquiryText(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleInquirySubmit()} placeholder="Haz una pregunta Sí/No..." className="flex-1 bg-transparent border-none text-white outline-none px-2 text-sm disabled:opacity-50" disabled={isAsking} autoFocus />
+                            <input type="text" value={inquiryText} onChange={e => setInquiryText(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleInquirySubmit()} placeholder="Ask a Yes/No question..." className="flex-1 bg-transparent border-none text-white outline-none px-2 text-sm disabled:opacity-50" disabled={isAsking} autoFocus />
                             <button onClick={handleInquirySubmit} disabled={!inquiryText.trim() || isAsking} className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white hover:bg-blue-500 shrink-0 disabled:opacity-40">
                                 <Send size={16} />
                             </button>
@@ -666,7 +666,7 @@ const DetectiveStories: React.FC<Props> = ({ onBack, userLevel, onSaveVocab }) =
                                     <div className="flex-1 h-1.5 bg-slate-700 rounded-full overflow-hidden">
                                         <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${(p.interviewedSuspects.length / Math.max(suspects.length, 1)) * 100}%` }} />
                                     </div>
-                                    <span className="text-xs text-slate-400 font-bold whitespace-nowrap">{p.interviewedSuspects.length}/{suspects.length} testigos</span>
+                                    <span className="text-xs text-slate-400 font-bold whitespace-nowrap">{p.interviewedSuspects.length}/{suspects.length} witnesses</span>
                                 </div>
                             </div>
                             <button onClick={() => setShowNotebook(true)} className="ml-3 w-10 h-10 bg-white text-black rounded-full flex items-center justify-center shrink-0 hover:scale-105 transition-transform">
@@ -677,7 +677,7 @@ const DetectiveStories: React.FC<Props> = ({ onBack, userLevel, onSaveVocab }) =
                 </div>
 
                 <div className="flex-1 flex flex-col items-center pt-6 px-6">
-                    <h3 className="text-xl font-black mb-1">Entrevistar testigo</h3>
+                    <h3 className="text-xl font-black mb-1">Interview Witness</h3>
                     <p className="text-blue-400 font-bold text-base mb-8 h-7">{selectedSuspect?.name || ''}</p>
 
                     <div className="grid grid-cols-3 gap-6 max-w-xs w-full justify-items-center">
@@ -703,7 +703,7 @@ const DetectiveStories: React.FC<Props> = ({ onBack, userLevel, onSaveVocab }) =
                         <LogOut size={22} className="rotate-180" />
                     </button>
                     <button onClick={startInterview} disabled={!selectedSuspect} className="flex-1 h-14 bg-blue-500 hover:bg-blue-400 disabled:opacity-40 text-white rounded-full font-black text-lg transition-colors">
-                        Entrevista
+                        Interview
                     </button>
                     {allInterviewed && (
                         <button onClick={() => setCurrentView('verdict')} className="w-14 h-14 rounded-full bg-red-600 hover:bg-red-500 flex items-center justify-center shrink-0 transition-colors">
@@ -716,12 +716,12 @@ const DetectiveStories: React.FC<Props> = ({ onBack, userLevel, onSaveVocab }) =
                 {showNotebook && (
                     <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur flex flex-col animate-in fade-in">
                         <div className="p-5 flex items-center justify-between border-b border-white/10">
-                            <h2 className="text-lg font-black">📋 Expediente</h2>
+                            <h2 className="text-lg font-black">📋 Case File</h2>
                             <button onClick={() => setShowNotebook(false)} className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center"><X size={16} /></button>
                         </div>
                         <div className="p-5 flex-1 overflow-y-auto">
                             {p.collectedClueIds.length === 0 ? (
-                                <p className="text-slate-500 text-center mt-10 text-sm">Aún no has encontrado pistas. Escucha con atención.</p>
+                                <p className="text-slate-500 text-center mt-10 text-sm">You haven't found any clues yet. Listen closely.</p>
                             ) : (
                                 <div className="space-y-3">
                                     {clues.filter(c => p.collectedClueIds.includes(c.id)).map(c => (
@@ -759,8 +759,8 @@ const DetectiveStories: React.FC<Props> = ({ onBack, userLevel, onSaveVocab }) =
                 <button onClick={onBack} className="absolute top-5 right-5 w-9 h-9 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition-colors">
                     <X size={16} />
                 </button>
-                <h1 className="text-3xl font-black tracking-tight">Historias de detectives</h1>
-                <p className="text-purple-200 text-sm mt-1">Selecciona un caso y mejora tus habilidades</p>
+                <h1 className="text-3xl font-black tracking-tight">Detective Stories</h1>
+                <p className="text-purple-200 text-sm mt-1">Select a case and improve your skills</p>
             </div>
 
             <div className="px-5 pb-24 space-y-8 mt-4">
@@ -769,7 +769,7 @@ const DetectiveStories: React.FC<Props> = ({ onBack, userLevel, onSaveVocab }) =
                     <div onClick={() => handleSelectCase(dailyCase)} className="cursor-pointer bg-gradient-to-r from-amber-900/40 to-orange-900/40 border border-amber-500/30 rounded-3xl p-5 flex items-center gap-4 hover:border-amber-500/60 transition-colors">
                         <div className="text-3xl">⭐</div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-xs font-black text-amber-400 uppercase tracking-widest">CASO DEL DÍA</p>
+                            <p className="text-xs font-black text-amber-400 uppercase tracking-widest">DAILY MYSTERY</p>
                             <p className="font-black text-base truncate">{dailyCase.title}</p>
                             <p className="text-xs text-slate-400 truncate mt-0.5">{dailyCase.description}</p>
                         </div>
@@ -785,7 +785,7 @@ const DetectiveStories: React.FC<Props> = ({ onBack, userLevel, onSaveVocab }) =
                             <div className="flex items-center justify-between mb-3">
                                 <div>
                                     <h2 className="text-lg font-black">{group}</h2>
-                                    <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">CASOS RESUELTOS {solved}/{eps.length}</p>
+                                    <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">CASES SOLVED {solved}/{eps.length}</p>
                                 </div>
                                 <span className={`text-xs font-black px-2 py-1 rounded-lg text-white ${getLevelBadgeColor(eps[0].level)}`}>
                                     {getLevelBadgeLabel(eps[0].level)}

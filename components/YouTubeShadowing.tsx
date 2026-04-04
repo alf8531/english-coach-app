@@ -216,6 +216,7 @@ export const YouTubeShadowing: React.FC<Props> = ({ onBack, accentPreference }) 
     const activeLineRef = useRef<HTMLDivElement>(null);
     // Use a ref for the active index inside the RAF loop to avoid stale closure
     const activeIdxRef = useRef(0);
+    const lastTimeRef = useRef(-1);
     const playClipIntervalRef = useRef<number | null>(null);
     const { addXP } = useXP();
     const { recordActivity } = useStreak();
@@ -235,6 +236,8 @@ export const YouTubeShadowing: React.FC<Props> = ({ onBack, accentPreference }) 
     useEffect(() => {
         if (phase !== 'watch' || !player || transcript.length === 0) return;
 
+        lastTimeRef.current = -1;
+
         const updateTime = () => {
             let t = 0;
             try { t = player.getCurrentTime(); } catch (_) {
@@ -242,19 +245,29 @@ export const YouTubeShadowing: React.FC<Props> = ({ onBack, accentPreference }) 
                 return;
             }
 
-            setCurrentTime(t);
+            // Skip re-renders when paused/buffering (same time as last frame)
+            if (Math.abs(t - lastTimeRef.current) > 0.01) {
+                lastTimeRef.current = t;
+                setCurrentTime(t);
 
-            // Binary search → O(log n), avoids full array scan every frame
-            let lo = 0, hi = transcript.length - 1, idx = -1;
-            while (lo <= hi) {
-                const mid = (lo + hi) >> 1;
-                if (transcript[mid].startTime <= t) { idx = mid; lo = mid + 1; }
-                else hi = mid - 1;
-            }
+                // Binary search → O(log n), avoids full array scan every frame
+                let lo = 0, hi = transcript.length - 1, idx = -1;
+                while (lo <= hi) {
+                    const mid = (lo + hi) >> 1;
+                    if (transcript[mid].startTime <= t) { idx = mid; lo = mid + 1; }
+                    else hi = mid - 1;
+                }
 
-            if (idx !== -1 && idx !== activeIdxRef.current) {
-                activeIdxRef.current = idx;
-                setActiveLineIdx(idx);
+                // Verify currentTime is within the found line's time range
+                if (idx !== -1 && t > transcript[idx].endTime) {
+                    idx = -1; // In a gap between cues
+                }
+
+                // Only update if we found a valid line (keep last highlight during gaps)
+                if (idx !== -1 && idx !== activeIdxRef.current) {
+                    activeIdxRef.current = idx;
+                    setActiveLineIdx(idx);
+                }
             }
 
             rafRef.current = requestAnimationFrame(updateTime);

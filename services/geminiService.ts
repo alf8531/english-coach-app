@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, Modality } from "@google/genai";
-import { ProficiencyLevel, AnalysisResult, CoachFeedback, TextSample, ChatMessage, HighlightedPhrase, ScriptLine, DictationChallenge, WritingChallenge, WritingFeedback, ImageDescriptionFeedback, SprintAnalysis, YouTubeTranscriptLine } from "../types";
+import { ProficiencyLevel, AnalysisResult, CoachFeedback, TextSample, ChatMessage, HighlightedPhrase, ScriptLine, DictationChallenge, WritingChallenge, WritingFeedback, ImageDescriptionFeedback, SprintAnalysis, YouTubeTranscriptLine, PronunciationAnalysis, RoleplayAnalysis, NativeScene, SceneScriptPart } from "../types";
 
 import { decode, decodeAudioData } from "./audioUtils";
 
@@ -148,7 +148,7 @@ export const sendDeepChatMessage = async (
     // Manually construct history for generateContent since chats.create logic with audio can be tricky with types
     const contents: any[] = history.map(h => ({
       role: h.role,
-      parts: [{ text: h.text }]
+      parts: [{ text: h.content }]
     }));
 
     // Add current turn
@@ -405,7 +405,8 @@ export const analyzeReading = async (targetText: string, audioBase64: string, mi
       phonemeIssues: fastRes.phonemeIssues || [],
       linkingIssues: fastRes.linkingIssues || [],
       problemWords: fastRes.problemWords || [],
-      detailedAnalysis: deepRes // Attach the new deep analysis
+      detailedAnalysis: deepRes,
+      coach: {} as any
     };
   } catch (error: any) {
     throw new Error(`Analysis failed: ${error.message}`);
@@ -457,9 +458,9 @@ export const generateNativeScene = async (scenario: string, level: ProficiencyLe
   return callWithRetry(async () => {
     const ai = getAI();
     const levelInstructions = {
-      [ProficiencyLevel.BEGINNER]: "Simple, literal language. No slang. Slow, clear sentences.",
-      [ProficiencyLevel.INTERMEDIATE]: "Natural speed. Use common phrasal verbs and standard reductions (wanna, gotta).",
-      [ProficiencyLevel.ADVANCED]: "Native speed. Heavy slang, cultural nuances, and complex phonetic linking."
+      [ProficiencyLevel.Beginner]: "Simple, literal language. No slang. Slow, clear sentences.",
+      [ProficiencyLevel.Intermediate]: "Natural speed. Use common phrasal verbs and standard reductions (wanna, gotta).",
+      [ProficiencyLevel.Advanced]: "Native speed. Heavy slang, cultural nuances, and complex phonetic linking."
     };
 
     const prompt = `Act as an American English Scriptwriter. Create a native dialogue scene.
@@ -503,7 +504,7 @@ export const generateSceneImage = async (imagePrompt: string): Promise<string> =
 export const generateMultiSpeakerAudio = async (script: SceneScriptPart[], level: ProficiencyLevel): Promise<AudioBuffer[]> => {
   const ai = getAI();
   const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-  const speed = level === ProficiencyLevel.BEGINNER ? "slow" : level === ProficiencyLevel.INTERMEDIATE ? "natural" : "fast";
+  const speed = level === ProficiencyLevel.Beginner ? "slow" : level === ProficiencyLevel.Intermediate ? "natural" : "fast";
 
   const audioPromises = script.map(async (part, i) => {
     return callWithRetry(async () => {
@@ -919,9 +920,8 @@ Is the user correct? Give a brief 1-sentence encouragement or correction. Return
  * Strictly NO Gemini fallback (Anti-Hallucination Policy).
  */
 export const generateYouTubeTranscript = async (videoId: string): Promise<YouTubeTranscriptLine[]> => {
-  // Cache key v2: new prefix avoids stale data from old cors-anywhere attempts
-  // v3 cache key: bumped to bust any stale "no data" results from previous failed attempts
-  const cacheKey = `yt_transcript_v3_${videoId}`;
+  // Cache key v4: bumped to force re-fetch with improved VTT dedup parser
+  const cacheKey = `yt_transcript_v4_${videoId}`;
   const cached = localStorage.getItem(cacheKey);
   if (cached) {
     try {
@@ -1018,7 +1018,8 @@ export const generateNativeAudioWithAccent = async (text: string, accentHint: st
 
     const audioPart = response.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData?.mimeType?.startsWith('audio/'));
     if (!audioPart?.inlineData) throw new Error('No audio returned');
-    return decodeAudioData(audioPart.inlineData.data, audioPart.inlineData.mimeType);
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+    return await decodeAudioData(decode(audioPart.inlineData.data), ctx, 24000, 1);
   });
 };
 

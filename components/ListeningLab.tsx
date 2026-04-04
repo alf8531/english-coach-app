@@ -17,7 +17,7 @@ const ListeningLab: React.FC = () => {
 
   // ================= SCENE SIMULATOR STATE =================
   const [stage, setStage] = useState<'selection' | 'generating' | 'simulation'>('selection');
-  const [selectedLevel, setSelectedLevel] = useState<ProficiencyLevel>(ProficiencyLevel.INTERMEDIATE);
+  const [selectedLevel, setSelectedLevel] = useState<ProficiencyLevel>(ProficiencyLevel.Intermediate);
   const [customScenario, setCustomScenario] = useState("");
   const [scene, setScene] = useState<NativeScene | null>(null);
   const [currentPartIndex, setCurrentPartIndex] = useState(0);
@@ -83,7 +83,7 @@ const ListeningLab: React.FC = () => {
       ]);
 
       newScene.script = newScene.script.map((p, i) => ({ ...p, audioBuffer: audioBuffers[i] }));
-      newScene.imageUrl = imageUrl;
+      newScene.imagePrompt = imageUrl;
 
       setScene(newScene);
       setStage('simulation');
@@ -552,7 +552,7 @@ const ListeningLab: React.FC = () => {
           {stage === 'simulation' && scene && (
             <div className="space-y-8 animate-in zoom-in-95 duration-500">
               <div className="relative rounded-[3rem] overflow-hidden shadow-2xl aspect-video bg-slate-900 border-8 border-white group">
-                <img src={scene.imageUrl} className="absolute inset-0 w-full h-full object-cover opacity-60 transition-transform duration-[10s] group-hover:scale-110" alt="Scene Context" />
+                <img src={scene.imagePrompt} className="absolute inset-0 w-full h-full object-cover opacity-60 transition-transform duration-[10s] group-hover:scale-110" alt="Scene Context" />
 
                 <div className="absolute inset-0 p-8 flex flex-col justify-end bg-gradient-to-t from-black/90 via-transparent to-transparent">
                   <div className="space-y-4">

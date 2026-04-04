@@ -51,6 +51,9 @@ export interface AnalysisResult {
   linkingIssues: LinkingIssue[];
   coach: CoachFeedback;
   nativeAudioBase64?: string;
+  overallFeedback?: string;
+  problemWords?: string[];
+  detailedAnalysis?: PronunciationAnalysis;
 }
 
 // --- Chat ---
@@ -337,4 +340,36 @@ export interface DetectiveAchievement {
   description: string;
   icon: string;                 // emoji
   unlockedAt?: number;          // timestamp; undefined = locked
+}
+
+// --- Missing Legacy Types ---
+export type SRSLevel = 'new' | 'learning' | 'review' | 'mastered';
+
+export interface PronunciationAnalysis {
+  score: number;
+  missed_words: string[];
+  linking_notes: string[];
+  improvement_tip: string;
+}
+
+export interface RoleplayAnalysis {
+  score: number;
+  missed_words: string[];
+  linking_notes: string[];
+  improvement_tip: string;
+}
+
+export interface SceneScriptPart {
+  speaker: string;
+  text: string;
+  isNativeMoment: boolean;
+  momentExplanation: string;
+}
+
+export interface NativeScene {
+  id: string;
+  title: string;
+  description: string;
+  imagePrompt: string;
+  script: SceneScriptPart[];
 }

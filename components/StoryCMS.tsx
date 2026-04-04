@@ -52,7 +52,9 @@ const StoryCMS: React.FC<Props> = () => {
             scenes: [],
             availableClues: [],
             isPublished: false,
-            ts: Date.now()
+            ts: Date.now(),
+            suspects: [],
+            solution: {} as any
         };
         setEpisodes([newEp, ...episodes]);
     };
@@ -77,6 +79,8 @@ const StoryCMS: React.FC<Props> = () => {
                 level: aiLevel, // force the requested level
                 isPublished: false,
                 ts: Date.now(),
+                suspects: [],
+                solution: {} as any,
                 availableClues: [],
                 scenes: (rawStory.scenes || []).map((scene: any) => ({
                     id: Math.random().toString(36).substr(2, 9),

@@ -94,7 +94,7 @@ export default defineConfig(({ mode }) => {
               }
 
               // ── Parse WebVTT → transcript lines ──────────────────────────────
-              const lines: any[] = [];
+              const rawLines: any[] = [];
               const blocks = vttContent.split(/\n\n+/);
 
               for (const block of blocks) {
@@ -107,7 +107,6 @@ export default defineConfig(({ mode }) => {
 
                 const startTime = +m[1] * 3600 + +m[2] * 60 + +m[3] + +m[4] / 1000;
                 const endTime = +m[5] * 3600 + +m[6] * 60 + +m[7] + +m[8] / 1000;
-                const dur = Math.max(endTime - startTime, 0.5);
 
                 const tsIdx = rows.indexOf(tsRow);
                 const rawText = rows.slice(tsIdx + 1)
@@ -123,24 +122,71 @@ export default defineConfig(({ mode }) => {
 
                 if (!rawText) continue;
 
-                // De-duplicate consecutive identical lines (yt-dlp auto-sub quirk)
-                if (lines.length > 0 &&
-                  lines[lines.length - 1].text === rawText &&
-                  Math.abs(lines[lines.length - 1].startTime - startTime) < 1) {
+                // De-duplicate: exact match within 1s
+                if (rawLines.length > 0 &&
+                  rawLines[rawLines.length - 1].text === rawText &&
+                  Math.abs(rawLines[rawLines.length - 1].startTime - startTime) < 1) {
+                  // Extend the endTime of the existing line
+                  rawLines[rawLines.length - 1].endTime = Math.max(rawLines[rawLines.length - 1].endTime, endTime);
                   continue;
                 }
 
-                const wordStrs = rawText.split(/\s+/).filter(Boolean);
+                // Rolling-text dedup: if new text is a superstring of prev text
+                // and time overlaps, replace prev with the longer version
+                if (rawLines.length > 0) {
+                  const prev = rawLines[rawLines.length - 1];
+                  const timeOverlap = prev.endTime > startTime - 0.5;
+                  if (timeOverlap && rawText.length > prev.text.length && rawText.includes(prev.text)) {
+                    // Replace previous with this longer version, keep earliest startTime
+                    prev.text = rawText;
+                    prev.endTime = endTime;
+                    continue;
+                  }
+                }
+
+                rawLines.push({ text: rawText, startTime, endTime });
+              }
+
+              // ── Post-parse merge: collapse lines with >50% time overlap ──────
+              const merged: any[] = [];
+              for (const line of rawLines) {
+                if (merged.length > 0) {
+                  const prev = merged[merged.length - 1];
+                  const overlapStart = Math.max(prev.startTime, line.startTime);
+                  const overlapEnd = Math.min(prev.endTime, line.endTime);
+                  const overlap = Math.max(0, overlapEnd - overlapStart);
+                  const prevDur = prev.endTime - prev.startTime;
+                  const lineDur = line.endTime - line.startTime;
+                  const minDur = Math.min(prevDur, lineDur);
+
+                  if (minDur > 0 && overlap / minDur > 0.5) {
+                    // Keep the longer text, extend time range
+                    if (line.text.length >= prev.text.length) {
+                      prev.text = line.text;
+                    }
+                    prev.startTime = Math.min(prev.startTime, line.startTime);
+                    prev.endTime = Math.max(prev.endTime, line.endTime);
+                    continue;
+                  }
+                }
+                merged.push({ ...line });
+              }
+
+              // ── Build final lines with per-word timing ────────────────────────
+              const lines: any[] = [];
+              for (const m of merged) {
+                const dur = Math.max(m.endTime - m.startTime, 0.5);
+                const wordStrs = m.text.split(/\s+/).filter(Boolean);
                 const tpw = dur / Math.max(wordStrs.length, 1);
 
                 lines.push({
-                  text: rawText,
-                  startTime,
-                  endTime,
+                  text: m.text,
+                  startTime: m.startTime,
+                  endTime: m.endTime,
                   words: wordStrs.map((w: string, i: number) => ({
                     word: w,
-                    startTime: startTime + i * tpw,
-                    endTime: startTime + (i + 1) * tpw,
+                    startTime: m.startTime + i * tpw,
+                    endTime: m.startTime + (i + 1) * tpw,
                   })),
                 });
               }

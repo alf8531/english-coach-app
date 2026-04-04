@@ -1,0 +1,12 @@
+components/DeepChat.tsx(274,66): error TS2339: Property 'accent_vibe' does not exist on type 'PronunciationAnalysis'.
+components/DeepChat.tsx(278,66): error TS2339: Property 'accent_vibe' does not exist on type 'PronunciationAnalysis'.
+components/DeepChat.tsx(283,24): error TS2339: Property 'the_fix' does not exist on type 'PronunciationAnalysis'.
+components/GrammarMystery.tsx(287,47): error TS2322: Type '{ key: any; clue: any; index: any; onAnswer: any; }' is not assignable to type '{ clue: MysteryClue; index: number; onAnswer: (clueId: string, answer: string) => void; }'.
+  Property 'key' does not exist on type '{ clue: MysteryClue; index: number; onAnswer: (clueId: string, answer: string) => void; }'.
+components/ListeningLab.tsx(20,89): error TS2551: Property 'INTERMEDIATE' does not exist on type 'typeof ProficiencyLevel'. Did you mean 'Intermediate'?
+components/ListeningLab.tsx(86,16): error TS2339: Property 'imageUrl' does not exist on type 'NativeScene'.
+components/MediaLab.tsx(24,23): error TS2339: Property 'aistudio' does not exist on type 'Window & typeof globalThis'.
+components/MediaLab.tsx(25,20): error TS2339: Property 'aistudio' does not exist on type 'Window & typeof globalThis'.
+components/StoryCMS.tsx(47,15): error TS2739: Type '{ id: string; title: string; description: string; level: ProficiencyLevel.Beginner; scenes: undefined[]; availableClues: undefined[]; isPublished: false; ts: number; }' is missing the following properties from type 'StoryEpisode': suspects, solution
+components/StoryCMS.tsx(73,19): error TS2739: Type '{ id: string; title: any; description: any; level: any; isPublished: false; ts: number; availableClues: undefined[]; scenes: any; }' is missing the following properties from type 'StoryEpisode': suspects, solution
+services/geminiService.ts(402,5): error TS2741: Property 'coach' is missing in type '{ accuracyScore: any; overallFeedback: any; phonemeIssues: any; linkingIssues: any; problemWords: any; detailedAnalysis: PronunciationAnalysis; }' but required in type 'AnalysisResult'.

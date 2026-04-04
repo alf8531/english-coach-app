@@ -72,6 +72,7 @@ function ClueCard({
 }: {
     clue: MysteryClue;
     index: number;
+    key?: React.Key;
     onAnswer: (clueId: string, answer: string) => void;
 }) {
     const [selected, setSelected] = useState<string | null>(null);
@@ -115,9 +116,9 @@ function ClueCard({
                                 onAnswer(clue.id, opt);
                             }}
                             className={`w-full text-left px-4 py-2.5 rounded-xl text-sm transition-all border ${selected === null ? 'border-slate-600/40 bg-slate-700/40 hover:bg-slate-700 hover:border-slate-500 text-slate-200'
-                                    : opt === clue.correctOption ? 'border-emerald-500/60 bg-emerald-500/10 text-emerald-300'
-                                        : opt === selected ? 'border-red-500/60 bg-red-500/10 text-red-300'
-                                            : 'border-slate-600/30 bg-slate-800/30 text-slate-500'
+                                : opt === clue.correctOption ? 'border-emerald-500/60 bg-emerald-500/10 text-emerald-300'
+                                    : opt === selected ? 'border-red-500/60 bg-red-500/10 text-red-300'
+                                        : 'border-slate-600/30 bg-slate-800/30 text-slate-500'
                                 }`}>
                             {opt}
                         </motion.button>
@@ -235,8 +236,8 @@ export const GrammarMystery: React.FC<Props> = ({ onBack }) => {
                                     {DIFFICULTY_OPTIONS.map(d => (
                                         <button key={d} onClick={() => setDifficulty(d)}
                                             className={`py-2 px-3 rounded-xl text-xs font-semibold transition-all border ${difficulty === d
-                                                    ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
-                                                    : 'border-slate-600/40 text-slate-400 hover:border-slate-500'
+                                                ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
+                                                : 'border-slate-600/40 text-slate-400 hover:border-slate-500'
                                                 }`}>
                                             {d.split(' ')[0]}
                                         </button>
@@ -248,8 +249,8 @@ export const GrammarMystery: React.FC<Props> = ({ onBack }) => {
                                     {GRAMMAR_TOPICS.map(t => (
                                         <button key={t} onClick={() => setTopic(t)}
                                             className={`py-2 px-3 rounded-xl text-xs text-left transition-all border ${topic === t
-                                                    ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
-                                                    : 'border-slate-600/40 text-slate-400 hover:border-slate-500'
+                                                ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
+                                                : 'border-slate-600/40 text-slate-400 hover:border-slate-500'
                                                 }`}>
                                             {t}
                                         </button>

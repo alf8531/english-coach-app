@@ -17,9 +17,11 @@ const port = process.env.PORT || 8080;
 app.use(express.json({ limit: '50mb' }));
 
 // Initialize Firestore
-// Cloud Run automatically uses the default service account if project ID is not provided,
-// but it's safer to let it detect from environment or pass it if known.
-const firestore = new Firestore();
+// Parse credentials from Render environment variables since we are not on Cloud Run
+const firestoreOptions = process.env.FIRESTORE_CREDENTIALS 
+    ? { credentials: JSON.parse(process.env.FIRESTORE_CREDENTIALS) } 
+    : {};
+const firestore = new Firestore(firestoreOptions);
 const STORIES_COLLECTION = 'stories';
 
 // Serve static files from the 'dist' directory

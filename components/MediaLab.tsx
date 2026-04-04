@@ -21,8 +21,8 @@ const MediaLab: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const checkKey = async () => {
-    if (!await window.aistudio.hasSelectedApiKey()) {
-      await window.aistudio.openSelectKey();
+    if (!await (window as any).aistudio.hasSelectedApiKey()) {
+      await (window as any).aistudio.openSelectKey();
       return true;
     }
     return true;
@@ -126,58 +126,58 @@ const MediaLab: React.FC = () => {
           </div>
 
           <div className="bg-slate-900 rounded-[3rem] p-4 flex items-center justify-center relative overflow-hidden min-h-[400px]">
-             {isGenerating ? (
-               <div className="text-center space-y-6">
-                 <div className="w-16 h-16 border-8 border-indigo-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                 <p className="text-indigo-200 font-bold animate-pulse">{status}</p>
-               </div>
-             ) : resultUrl ? (
-               mode === 'image' ? (
-                 <img src={resultUrl} className="w-full h-full object-contain rounded-2xl animate-in zoom-in-95" alt="Generated" />
-               ) : (
-                 <video src={resultUrl} className="w-full h-full object-contain rounded-2xl" controls autoPlay loop />
-               )
-             ) : (
-               <div className="text-slate-700 font-black text-4xl text-center uppercase tracking-tighter opacity-20">Preview Frame</div>
-             )}
+            {isGenerating ? (
+              <div className="text-center space-y-6">
+                <div className="w-16 h-16 border-8 border-indigo-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                <p className="text-indigo-200 font-bold animate-pulse">{status}</p>
+              </div>
+            ) : resultUrl ? (
+              mode === 'image' ? (
+                <img src={resultUrl} className="w-full h-full object-contain rounded-2xl animate-in zoom-in-95" alt="Generated" />
+              ) : (
+                <video src={resultUrl} className="w-full h-full object-contain rounded-2xl" controls autoPlay loop />
+              )
+            ) : (
+              <div className="text-slate-700 font-black text-4xl text-center uppercase tracking-tighter opacity-20">Preview Frame</div>
+            )}
           </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 animate-in fade-in duration-300">
-           <div className="bg-white rounded-[3rem] p-10 shadow-2xl space-y-8 border border-slate-100">
-              <div className="space-y-4">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Select Media</label>
-                <div onClick={() => fileInputRef.current?.click()} className="w-full h-48 border-4 border-dashed border-slate-100 rounded-3xl flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 transition-all group overflow-hidden relative">
-                   {filePreview ? (
-                     <img src={filePreview} className="absolute inset-0 w-full h-full object-cover group-hover:opacity-40" />
-                   ) : (
-                     <>
-                      <svg className="w-12 h-12 text-slate-300 group-hover:text-indigo-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                      <p className="text-sm font-bold text-slate-400">Click to upload photo/video</p>
-                     </>
-                   )}
-                </div>
-                <input ref={fileInputRef} type="file" className="hidden" accept="image/*,video/*" onChange={handleFileChange} />
+          <div className="bg-white rounded-[3rem] p-10 shadow-2xl space-y-8 border border-slate-100">
+            <div className="space-y-4">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Select Media</label>
+              <div onClick={() => fileInputRef.current?.click()} className="w-full h-48 border-4 border-dashed border-slate-100 rounded-3xl flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 transition-all group overflow-hidden relative">
+                {filePreview ? (
+                  <img src={filePreview} className="absolute inset-0 w-full h-full object-cover group-hover:opacity-40" />
+                ) : (
+                  <>
+                    <svg className="w-12 h-12 text-slate-300 group-hover:text-indigo-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    <p className="text-sm font-bold text-slate-400">Click to upload photo/video</p>
+                  </>
+                )}
               </div>
+              <input ref={fileInputRef} type="file" className="hidden" accept="image/*,video/*" onChange={handleFileChange} />
+            </div>
 
-              <div className="space-y-4">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Analysis Prompt</label>
-                <textarea value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="Analyze this for native expressions..." className="w-full h-32 p-6 bg-slate-50 border border-slate-200 rounded-3xl font-medium text-lg outline-none focus:ring-4 focus:ring-indigo-100 transition-all resize-none" />
-              </div>
+            <div className="space-y-4">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Analysis Prompt</label>
+              <textarea value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="Analyze this for native expressions..." className="w-full h-32 p-6 bg-slate-50 border border-slate-200 rounded-3xl font-medium text-lg outline-none focus:ring-4 focus:ring-indigo-100 transition-all resize-none" />
+            </div>
 
-              <button onClick={handleAnalyze} disabled={isAnalyzing || !selectedFile} className="w-full py-6 bg-slate-900 text-white rounded-3xl font-black text-xl hover:bg-indigo-600 transition-all shadow-xl">
-                 {isAnalyzing ? "Deep Media Insight..." : "Analyze Media"}
-              </button>
-           </div>
+            <button onClick={handleAnalyze} disabled={isAnalyzing || !selectedFile} className="w-full py-6 bg-slate-900 text-white rounded-3xl font-black text-xl hover:bg-indigo-600 transition-all shadow-xl">
+              {isAnalyzing ? "Deep Media Insight..." : "Analyze Media"}
+            </button>
+          </div>
 
-           <div className="bg-white rounded-[3rem] p-10 shadow-2xl border border-slate-100 overflow-y-auto max-h-[600px] prose prose-slate">
-              <h3 className="text-xs font-black text-indigo-600 uppercase tracking-widest mb-4">Master Intelligence Analysis</h3>
-              {analysisResult ? (
-                <div className="font-medium text-slate-700 leading-relaxed whitespace-pre-wrap animate-in slide-in-from-bottom-4">{analysisResult}</div>
-              ) : (
-                <p className="text-slate-300 italic">Select media and describe your mastery goal to receive an AI analysis.</p>
-              )}
-           </div>
+          <div className="bg-white rounded-[3rem] p-10 shadow-2xl border border-slate-100 overflow-y-auto max-h-[600px] prose prose-slate">
+            <h3 className="text-xs font-black text-indigo-600 uppercase tracking-widest mb-4">Master Intelligence Analysis</h3>
+            {analysisResult ? (
+              <div className="font-medium text-slate-700 leading-relaxed whitespace-pre-wrap animate-in slide-in-from-bottom-4">{analysisResult}</div>
+            ) : (
+              <p className="text-slate-300 italic">Select media and describe your mastery goal to receive an AI analysis.</p>
+            )}
+          </div>
         </div>
       )}
     </div>
