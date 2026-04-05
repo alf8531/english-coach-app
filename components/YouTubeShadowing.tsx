@@ -2,11 +2,12 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Pause, Mic, Square, BookmarkPlus, ChevronRight, Loader2, Volume2, Waves, Star, X, Upload, AlertCircle } from 'lucide-react';
 import type { YouTubeTranscriptLine, ShadowingResult, AccentPreference } from '../types';
-import { analyzeShadowing, generateYouTubeTranscript, translateText } from '../services/geminiService';
+import { analyzeShadowing, generateYouTubeTranscript, translateText, RATE_LIMIT_MESSAGE } from '../services/geminiService';
 import { blobToBase64 } from '../services/audioUtils';
 import { useXP } from '../hooks/useXP';
 import { useStreak } from '../hooks/useStreak';
 import { useVocabDeck } from '../hooks/useVocabDeck';
+
 
 interface Props {
     onBack: () => void;
@@ -203,10 +204,13 @@ export const YouTubeShadowing: React.FC<Props> = ({ onBack, accentPreference }) 
     const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
     const [shadowResult, setShadowResult] = useState<ShadowingResult | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [analysisError, setAnalysisError] = useState<string | null>(null);
+    const [playerReady, setPlayerReady] = useState(false);
     const [translationData, setTranslationData] = useState<{
         word: string; sentence: string; definition?: string; synonyms?: string; translation?: string;
     } | null>(null);
     const [isTranslating, setIsTranslating] = useState(false);
+
 
     const playerRef = useRef<HTMLDivElement>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -234,7 +238,8 @@ export const YouTubeShadowing: React.FC<Props> = ({ onBack, accentPreference }) 
 
     // ── requestAnimationFrame sync loop — <100ms latency guaranteed ──────────
     useEffect(() => {
-        if (phase !== 'watch' || !player || transcript.length === 0) return;
+        // Gate on playerReady: never start polling before the player & transcript exist
+        if (phase !== 'watch' || !player || !playerReady || transcript.length === 0) return;
 
         lastTimeRef.current = -1;
 
@@ -263,6 +268,11 @@ export const YouTubeShadowing: React.FC<Props> = ({ onBack, accentPreference }) 
                     idx = -1; // In a gap between cues
                 }
 
+                // Also handle time past the last caption
+                if (idx === transcript.length - 1 && t > transcript[transcript.length - 1].endTime) {
+                    idx = -1;
+                }
+
                 // Only update if we found a valid line (keep last highlight during gaps)
                 if (idx !== -1 && idx !== activeIdxRef.current) {
                     activeIdxRef.current = idx;
@@ -275,7 +285,7 @@ export const YouTubeShadowing: React.FC<Props> = ({ onBack, accentPreference }) 
 
         rafRef.current = requestAnimationFrame(updateTime);
         return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
-    }, [phase, player, transcript]);
+    }, [phase, player, playerReady, transcript]);
 
     // Auto-scroll transcript to keep active line centered
     useEffect(() => {
@@ -293,9 +303,18 @@ export const YouTubeShadowing: React.FC<Props> = ({ onBack, accentPreference }) 
         const p = new window.YT.Player(playerRef.current, {
             videoId: id,
             playerVars: { controls: 1, rel: 0, modestbranding: 1, enablejsapi: 1, origin: window.location.origin },
-            events: { onReady: () => { setPlayer(p); p.playVideo(); } },
+            events: {
+                onReady: () => {
+                    setPlayer(p);
+                    setPlayerReady(true);
+                    // Intentionally NOT calling p.playVideo() here.
+                    // The player stays paused until the user presses Play.
+                    // This prevents the race condition where audio starts before captions load.
+                }
+            },
         });
     }, [player]);
+
 
     const handleLoadVideo = useCallback(async () => {
         const id = extractVideoId(videoUrl);
@@ -358,6 +377,7 @@ export const YouTubeShadowing: React.FC<Props> = ({ onBack, accentPreference }) 
     const analyzeRecording = useCallback(async () => {
         if (!recordedBlob || !selectedLine) return;
         setIsAnalyzing(true);
+        setAnalysisError(null);
         try {
             const b64 = await blobToBase64(recordedBlob);
             const result = await analyzeShadowing(selectedLine.text, b64, recordedBlob.type, accentPreference);
@@ -365,9 +385,14 @@ export const YouTubeShadowing: React.FC<Props> = ({ onBack, accentPreference }) 
             setPhase('result');
             addXP('youtube', result.pronunciationScore);
             recordActivity('youtube');
-        } catch (err) { console.error(err); }
+        } catch (err: any) {
+            console.error(err);
+            const msg = typeof err?.message === 'string' ? err.message : RATE_LIMIT_MESSAGE;
+            setAnalysisError(msg);
+        }
         finally { setIsAnalyzing(false); }
     }, [recordedBlob, selectedLine, accentPreference, addXP, recordActivity]);
+
 
     const handleWordClick = useCallback(async (word: string, contextSentence: string) => {
         player?.pauseVideo();
@@ -376,9 +401,14 @@ export const YouTubeShadowing: React.FC<Props> = ({ onBack, accentPreference }) 
         try {
             const result = await translateText(word, contextSentence);
             setTranslationData({ word, sentence: contextSentence, definition: result.englishDefinition, synonyms: result.synonyms, translation: result.spanishTranslation });
-        } catch (_) { setTranslationData(null); }
+        } catch (err: any) {
+            console.error(err);
+            setTranslationData(null);
+            // Swallow silently — translation failure is non-critical
+        }
         finally { setIsTranslating(false); }
     }, [player]);
+
 
     const handleSaveToVocab = useCallback(() => {
         if (!translationData) return;
@@ -587,7 +617,14 @@ export const YouTubeShadowing: React.FC<Props> = ({ onBack, accentPreference }) 
                                     {isAnalyzing ? <><Loader2 size={17} className="animate-spin" /> Analyzing…</> : <><Star size={17} /> Analyze My Shadow</>}
                                 </motion.button>
                             )}
-                            <button onClick={() => setPhase('watch')} className="mt-3 w-full py-2 text-slate-500 hover:text-slate-300 text-sm transition-all">
+                            {analysisError && (
+                                <div className="mt-3 flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-300 text-xs">
+                                    <AlertCircle size={13} className="shrink-0 mt-0.5" />
+                                    <span className="flex-1">{analysisError}</span>
+                                    <button onClick={() => setAnalysisError(null)} className="text-amber-400 hover:text-white font-black">×</button>
+                                </div>
+                            )}
+                            <button onClick={() => { setPhase('watch'); setAnalysisError(null); }} className="mt-3 w-full py-2 text-slate-500 hover:text-slate-300 text-sm transition-all">
                                 ← Back to Transcript
                             </button>
                         </div>

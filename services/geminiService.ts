@@ -10,14 +10,64 @@ import { decode, decodeAudioData } from "./audioUtils";
 // to ensure stability and compliance with latest API guidelines.
 const CURRENT_MODEL_NAME = "gemini-2.5-flash";
 
+// ==========================================
+// GLOBAL ERROR HANDLING
+// ==========================================
+
+/** User-facing rate limit message shown across all components */
+export const RATE_LIMIT_MESSAGE = "The AI is currently busy or rate-limited. Please wait 60 seconds and try again.";
+
 /**
- * Robust retry wrapper with exponential backoff
+ * Custom API error that always has a clean, human-readable message.
+ * Never exposes raw JSON objects or internal stack traces.
+ */
+export class GeminiApiError extends Error {
+  readonly statusCode: number;
+  readonly isRateLimit: boolean;
+
+  constructor(message: string, statusCode: number = 0) {
+    // Sanitize: if message looks like a JSON object or is too long, replace it
+    const safeMessage = (() => {
+      if (!message || typeof message !== 'string') return 'An unexpected API error occurred.';
+      if (message.startsWith('{') || message.startsWith('[')) return 'An unexpected API error occurred.';
+      if (message.length > 200) return message.substring(0, 200) + '...';
+      return message;
+    })();
+    super(safeMessage);
+    this.name = 'GeminiApiError';
+    this.statusCode = statusCode;
+    this.isRateLimit = statusCode === 429 || message.toLowerCase().includes('quota') || message.toLowerCase().includes('rate limit') || message.toLowerCase().includes('resource_exhausted');
+  }
+}
+
+/**
+ * Detects whether an error is a 429 / quota exhaustion.
+ * Works across different error shapes the Gemini SDK may throw.
+ */
+function isRateLimitError(error: any): boolean {
+  if (!error) return false;
+  const status = error?.status ?? error?.code ?? error?.statusCode ?? 0;
+  if (status === 429) return true;
+  const msg = (error?.message ?? '').toLowerCase();
+  return msg.includes('429') || msg.includes('quota') || msg.includes('rate limit') || msg.includes('resource_exhausted') || msg.includes('too many requests');
+}
+
+/**
+ * Robust retry wrapper with exponential backoff.
+ * Immediately stops retrying on 429 rate-limit errors to avoid amplifying the problem.
  */
 async function callWithRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
   try {
     return await fn();
   } catch (error: any) {
-    if (retries <= 0) throw error;
+    // Never retry rate-limit errors — it makes things worse
+    if (isRateLimitError(error)) {
+      throw new GeminiApiError(RATE_LIMIT_MESSAGE, 429);
+    }
+    if (retries <= 0) {
+      // Wrap in GeminiApiError so components always get a safe .message
+      throw new GeminiApiError(error?.message || 'API call failed after all retries.', error?.status ?? 0);
+    }
     console.warn(`API call failed, retrying in ${delay}ms... (${retries} retries left)`, error);
     await new Promise(resolve => setTimeout(resolve, delay));
     return callWithRetry(fn, retries - 1, delay * 2);

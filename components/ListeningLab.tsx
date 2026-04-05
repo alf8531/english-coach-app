@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ProficiencyLevel, NativeScene, RoleplayAnalysis, DictationChallenge } from '../types';
-import { generateNativeScene, generateSceneImage, generateMultiSpeakerAudio, analyzeRoleplayLine, coachSceneQuestion, generateDictationChallenge, generateNativeAudio } from '../services/geminiService';
+import { generateNativeScene, generateSceneImage, generateMultiSpeakerAudio, analyzeRoleplayLine, coachSceneQuestion, generateDictationChallenge, generateNativeAudio, RATE_LIMIT_MESSAGE } from '../services/geminiService';
 import { blobToBase64 } from '../services/audioUtils';
+
 
 const PRESET_SCENARIOS = [
   "New York Coffee Shop Rush",
@@ -31,6 +32,7 @@ const ListeningLab: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showExplanation, setShowExplanation] = useState<number | null>(null);
   const [playingIndex, setPlayingIndex] = useState<number | null>(null);
+  const [sceneError, setSceneError] = useState<string | null>(null);
 
   // ================= DICTATION LAB STATE =================
   const [dictationLevel, setDictationLevel] = useState<string>("B1");
@@ -39,6 +41,7 @@ const ListeningLab: React.FC = () => {
   const [dictationStatus, setDictationStatus] = useState<'idle' | 'loading' | 'active' | 'review'>('idle');
   const [isPlayingDictation, setIsPlayingDictation] = useState(false);
   const [currentPlaybackWordIndex, setCurrentPlaybackWordIndex] = useState<number | null>(null);
+  const [dictationError, setDictationError] = useState<string | null>(null);
   const playbackAnimationRef = useRef<number | null>(null);
   const playbackStartTimeRef = useRef<number | null>(null);
   const durationRef = useRef<number | null>(null);
@@ -72,6 +75,7 @@ const ListeningLab: React.FC = () => {
   const handleStartScene = async (scenarioOverride?: string) => {
     const scenario = scenarioOverride || customScenario || "Casual interaction at a grocery store";
     setStage('generating');
+    setSceneError(null);
     try {
       setGenStep("Scripting American dialogue...");
       const newScene = await generateNativeScene(scenario, selectedLevel);
@@ -88,9 +92,10 @@ const ListeningLab: React.FC = () => {
       setScene(newScene);
       setStage('simulation');
       setCurrentPartIndex(0);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Simulation engine failed. Latency or API limits may be reached.");
+      const msg = typeof err?.message === 'string' ? err.message : RATE_LIMIT_MESSAGE;
+      setSceneError(msg);
       setStage('selection');
     }
   };
@@ -146,7 +151,8 @@ const ListeningLab: React.FC = () => {
       const result = await analyzeRoleplayLine(target, base64, mimeType);
       setAnalysis(result);
     } catch (e: any) {
-      alert(e.message);
+      const msg = typeof e?.message === 'string' ? e.message : RATE_LIMIT_MESSAGE;
+      setSceneError(msg);
     } finally {
       setIsAnalyzing(false);
     }
@@ -175,6 +181,7 @@ const ListeningLab: React.FC = () => {
     setDictationChallenge(null);
     setCursorIndex(0);
     setShakeIndex(null);
+    setDictationError(null);
 
     try {
       const challenge = await generateDictationChallenge(dictationLevel);
@@ -182,10 +189,11 @@ const ListeningLab: React.FC = () => {
       const audio = await generateNativeAudio(challenge.script);
       setDictationAudio(audio);
       setDictationStatus('active');
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      const msg = typeof e?.message === 'string' ? e.message : RATE_LIMIT_MESSAGE;
+      setDictationError(msg);
       setDictationStatus('idle');
-      alert("Failed to create dictation challenge.");
     }
   };
 
@@ -343,6 +351,17 @@ const ListeningLab: React.FC = () => {
       {/* ===================== DICTATION MASTERY TAB ===================== */}
       {activeTab === 'dictation' && (
         <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4">
+          {/* Dictation Error Banner */}
+          {dictationError && (
+            <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-2xl text-amber-800">
+              <svg className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+              <div className="flex-1">
+                <p className="font-bold text-sm">Challenge Failed</p>
+                <p className="text-sm font-medium mt-0.5">{dictationError}</p>
+              </div>
+              <button onClick={() => setDictationError(null)} className="text-amber-400 hover:text-amber-700 font-black text-lg leading-none">×</button>
+            </div>
+          )}
           {dictationStatus === 'idle' && (
             <div className="bg-white rounded-[3rem] p-12 text-center shadow-xl border border-slate-100 max-w-3xl mx-auto">
               <div className="w-20 h-20 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-6 text-indigo-600">
@@ -499,6 +518,17 @@ const ListeningLab: React.FC = () => {
       {/* ===================== SCENE SIMULATOR TAB ===================== */}
       {activeTab === 'simulator' && (
         <>
+          {/* Scene Error Banner */}
+          {sceneError && (
+            <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-2xl text-amber-800">
+              <svg className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+              <div className="flex-1">
+                <p className="font-bold text-sm">Simulation Failed</p>
+                <p className="text-sm font-medium mt-0.5">{sceneError}</p>
+              </div>
+              <button onClick={() => setSceneError(null)} className="text-amber-400 hover:text-amber-700 font-black text-lg leading-none">×</button>
+            </div>
+          )}
           {stage === 'selection' && (
             <div className="bg-white rounded-[3rem] p-10 shadow-2xl border border-slate-100 max-w-2xl mx-auto space-y-10">
               <div className="space-y-4">
