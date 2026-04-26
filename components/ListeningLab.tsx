@@ -1,7 +1,7 @@
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { ProficiencyLevel, NativeScene, RoleplayAnalysis, DictationChallenge } from '../types';
-import { generateNativeScene, generateSceneImage, generateMultiSpeakerAudio, analyzeRoleplayLine, coachSceneQuestion, generateDictationChallenge, generateNativeAudio, RATE_LIMIT_MESSAGE } from '../services/geminiService';
+import { generateNativeScene, generateSceneImage, generateMultiSpeakerAudioSequential, analyzeRoleplayLine, coachSceneQuestion, generateDictationChallenge, generateNativeAudio, RATE_LIMIT_MESSAGE, traceRequest } from '../services/geminiService';
 import { blobToBase64 } from '../services/audioUtils';
 
 
@@ -56,6 +56,10 @@ const ListeningLab: React.FC = () => {
   const audioChunksRef = useRef<Blob[]>([]);
   const currentAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  // Synchronous in-flight lock — prevents double-clicks from firing before React re-renders
+  const isGeneratingRef = useRef(false);
+  // AbortController — cancels in-flight requests on unmount/remount (StrictMode) or new generation
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // --- Shared Audio Logic ---
   const getContext = () => {
@@ -73,30 +77,92 @@ const ListeningLab: React.FC = () => {
   };
 
   const handleStartScene = async (scenarioOverride?: string) => {
+    // Synchronous in-flight guard — blocks double-click before React re-render
+    if (isGeneratingRef.current) {
+      console.log('[ListeningLab] BLOCKED duplicate generation — request already in-flight');
+      return;
+    }
+    isGeneratingRef.current = true;
+
+    // Abort any previous in-flight request (covers StrictMode remount)
+    if (abortControllerRef.current) {
+      console.log('[ListeningLab] Aborting previous in-flight request');
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    const requestId = traceRequest('handleStartScene');
+
     const scenario = scenarioOverride || customScenario || "Casual interaction at a grocery store";
     setStage('generating');
     setSceneError(null);
+
     try {
+      // Check if aborted before each step
+      if (controller.signal.aborted) throw new DOMException('Aborted', 'AbortError');
+
+      // --- Session Cache Check (10-minute TTL) ---
+      const cacheKey = `scene_cache_${scenario.toLowerCase().trim()}_${selectedLevel}`;
+      const cachedRaw = sessionStorage.getItem(cacheKey);
+      if (cachedRaw) {
+        try {
+          const { ts, scene: cachedScene } = JSON.parse(cachedRaw);
+          if (Date.now() - ts < 10 * 60 * 1000) {
+            console.log(`[ListeningLab] Cache hit for scene: ${cacheKey} (${requestId})`);
+            if (!controller.signal.aborted) {
+              setScene(cachedScene);
+              setStage('simulation');
+              setCurrentPartIndex(0);
+            }
+            isGeneratingRef.current = false;
+            return;
+          }
+        } catch (_) { /* corrupt cache — fall through */ }
+      }
+
+      if (controller.signal.aborted) throw new DOMException('Aborted', 'AbortError');
       setGenStep("Scripting American dialogue...");
       const newScene = await generateNativeScene(scenario, selectedLevel);
 
-      setGenStep("Preparing environment and voices...");
-      const [audioBuffers, imageUrl] = await Promise.all([
-        generateMultiSpeakerAudio(newScene.script, selectedLevel),
-        generateSceneImage(newScene.imagePrompt)
-      ]);
+      if (controller.signal.aborted) throw new DOMException('Aborted', 'AbortError');
+      // Sequential TTS: one line at a time to avoid concurrent API burst
+      setGenStep("Recording voices (sequential)...");
+      const audioBuffers = await generateMultiSpeakerAudioSequential(newScene.script, selectedLevel);
+
+      if (controller.signal.aborted) throw new DOMException('Aborted', 'AbortError');
+      // Image generation is non-blocking — start it after audio is done
+      setGenStep("Generating scene image...");
+      const imageUrl = await generateSceneImage(newScene.imagePrompt);
+
+      if (controller.signal.aborted) throw new DOMException('Aborted', 'AbortError');
 
       newScene.script = newScene.script.map((p, i) => ({ ...p, audioBuffer: audioBuffers[i] }));
       newScene.imagePrompt = imageUrl;
 
-      setScene(newScene);
-      setStage('simulation');
-      setCurrentPartIndex(0);
+      // Cache the scene (AudioBuffers excluded — they cannot be JSON serialized)
+      const sceneForCache = {
+        ...newScene,
+        script: newScene.script.map(p => ({ ...p, audioBuffer: undefined }))
+      };
+      sessionStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), scene: sceneForCache }));
+
+      if (!controller.signal.aborted) {
+        setScene(newScene);
+        setStage('simulation');
+        setCurrentPartIndex(0);
+      }
     } catch (err: any) {
+      // Don't show error UI if the request was intentionally aborted
+      if (err?.name === 'AbortError') {
+        console.log(`[ListeningLab] Request ${requestId} was aborted — suppressing error`);
+        return;
+      }
       console.error(err);
       const msg = typeof err?.message === 'string' ? err.message : RATE_LIMIT_MESSAGE;
       setSceneError(msg);
       setStage('selection');
+    } finally {
+      isGeneratingRef.current = false;
     }
   };
 
@@ -176,6 +242,10 @@ const ListeningLab: React.FC = () => {
 
   // --- Dictation Lab Functions ---
   const startNewDictation = async () => {
+    // Synchronous in-flight guard
+    if (isGeneratingRef.current) return;
+    isGeneratingRef.current = true;
+
     setDictationStatus('loading');
     setDictationAudio(null);
     setDictationChallenge(null);
@@ -184,7 +254,26 @@ const ListeningLab: React.FC = () => {
     setDictationError(null);
 
     try {
-      const challenge = await generateDictationChallenge(dictationLevel);
+      // --- Session Cache Check (5-minute TTL per level) ---
+      const cacheKey = `dictation_cache_${dictationLevel}`;
+      const cachedRaw = sessionStorage.getItem(cacheKey);
+      let challenge: DictationChallenge | null = null;
+
+      if (cachedRaw) {
+        try {
+          const { ts, data } = JSON.parse(cachedRaw);
+          if (Date.now() - ts < 5 * 60 * 1000) {
+            console.log('[ListeningLab] Cache hit for dictation level:', dictationLevel);
+            challenge = data;
+          }
+        } catch (_) { /* corrupt cache */ }
+      }
+
+      if (!challenge) {
+        challenge = await generateDictationChallenge(dictationLevel);
+        sessionStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data: challenge }));
+      }
+
       setDictationChallenge(challenge);
       const audio = await generateNativeAudio(challenge.script);
       setDictationAudio(audio);
@@ -194,6 +283,8 @@ const ListeningLab: React.FC = () => {
       const msg = typeof e?.message === 'string' ? e.message : RATE_LIMIT_MESSAGE;
       setDictationError(msg);
       setDictationStatus('idle');
+    } finally {
+      isGeneratingRef.current = false;
     }
   };
 
@@ -318,6 +409,13 @@ const ListeningLab: React.FC = () => {
 
   useEffect(() => {
     return () => {
+      // Abort any in-flight API request on unmount (critical for StrictMode)
+      if (abortControllerRef.current) {
+        console.log('[ListeningLab] Component unmounting — aborting in-flight requests');
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+      isGeneratingRef.current = false;
       if (currentAudioSourceRef.current) currentAudioSourceRef.current.stop();
       if (audioContextRef.current) audioContextRef.current.close();
     };
@@ -383,7 +481,7 @@ const ListeningLab: React.FC = () => {
                 </select>
               </div>
 
-              <button onClick={startNewDictation} className="px-10 py-5 bg-indigo-600 text-white rounded-2xl font-black text-lg hover:bg-indigo-700 shadow-xl shadow-indigo-200 transition-all active:scale-95">Start Challenge</button>
+              <button onClick={startNewDictation} disabled={dictationStatus === 'loading'} className="px-10 py-5 bg-indigo-600 text-white rounded-2xl font-black text-lg hover:bg-indigo-700 shadow-xl shadow-indigo-200 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">{dictationStatus === 'loading' ? 'Loading...' : 'Start Challenge'}</button>
             </div>
           )}
 
@@ -507,7 +605,7 @@ const ListeningLab: React.FC = () => {
                   </button>
                 )}
                 {dictationStatus === 'review' && (
-                  <button onClick={startNewDictation} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-lg hover:bg-indigo-700 transition-all shadow-xl">Next Challenge</button>
+                  <button onClick={startNewDictation} disabled={dictationStatus === 'loading'} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-lg hover:bg-indigo-700 transition-all shadow-xl disabled:opacity-50 disabled:cursor-not-allowed">{dictationStatus === 'loading' ? 'Loading...' : 'Next Challenge'}</button>
                 )}
               </div>
             </div>
@@ -561,10 +659,15 @@ const ListeningLab: React.FC = () => {
 
               <button
                 onClick={() => handleStartScene()}
-                disabled={!customScenario.trim()}
-                className="w-full py-6 bg-slate-900 text-white rounded-3xl font-black text-xl hover:bg-indigo-600 shadow-xl transition-all disabled:opacity-50"
+                disabled={!customScenario.trim() || stage === 'generating' || isGeneratingRef.current}
+                className="w-full py-6 bg-slate-900 text-white rounded-3xl font-black text-xl hover:bg-indigo-600 shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
               >
-                Generate Simulation
+                {(stage === 'generating' || isGeneratingRef.current) ? (
+                  <>
+                    <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Generating...
+                  </>
+                ) : 'Generate Simulation'}
               </button>
             </div>
           )}

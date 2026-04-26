@@ -16,6 +16,16 @@ const port = process.env.PORT || 8080;
 
 app.use(express.json({ limit: '50mb' }));
 
+// ==========================================
+// BACKEND REQUEST TRACING
+// ==========================================
+let serverReqCounter = 0;
+app.use('/api', (req, res, next) => {
+  const id = `SRV-REQ-${++serverReqCounter}-${Date.now()}`;
+  console.log(`[SERVER TRACE] ${new Date().toISOString()} | ${id} | ${req.method} ${req.originalUrl}`);
+  next();
+});
+
 // Initialize Firestore
 // Parse credentials from Render environment variables since we are not on Cloud Run
 const firestoreOptions = process.env.FIRESTORE_CREDENTIALS 

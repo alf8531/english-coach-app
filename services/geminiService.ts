@@ -6,9 +6,10 @@ import { decode, decodeAudioData } from "./audioUtils";
 // ==========================================
 // CENTRAL CONFIGURATION (STRICT)
 // ==========================================
-// Using gemini-2.5-flash as the standard model for all text and multimodal tasks 
-// to ensure stability and compliance with latest API guidelines.
-const CURRENT_MODEL_NAME = "gemini-2.5-flash";
+// Using gemini-1.5-flash for all text/multimodal tasks.
+// This is the quota-friendly stable model: 15 RPM on the free tier vs ~2 RPM for preview models.
+// gemini-2.5-flash-preview-tts is kept only for TTS tasks (no equivalent in 1.5).
+const CURRENT_MODEL_NAME = "gemini-1.5-flash";
 
 // ==========================================
 // GLOBAL ERROR HANDLING
@@ -52,25 +53,31 @@ function isRateLimitError(error: any): boolean {
   return msg.includes('429') || msg.includes('quota') || msg.includes('rate limit') || msg.includes('resource_exhausted') || msg.includes('too many requests');
 }
 
+// ==========================================
+// REQUEST TRACING
+// ==========================================
+let _reqCounter = 0;
+
+/** Logs a timestamped, unique request ID before every API call for debugging. */
+export function traceRequest(label: string): string {
+  const id = `REQ-${++_reqCounter}-${Date.now()}`;
+  console.log(`[GEMINI TRACE] ${new Date().toISOString()} | ${id} | ${label}`);
+  return id;
+}
+
 /**
- * Robust retry wrapper with exponential backoff.
- * Immediately stops retrying on 429 rate-limit errors to avoid amplifying the problem.
+ * Zero-retry wrapper. Catches errors and wraps them in GeminiApiError.
+ * NO automatic retries — a single failure is surfaced immediately to the UI.
+ * This prevents the app from silently spamming the Gemini API.
  */
-async function callWithRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
+async function callWithRetry<T>(fn: () => Promise<T>): Promise<T> {
   try {
     return await fn();
   } catch (error: any) {
-    // Never retry rate-limit errors — it makes things worse
     if (isRateLimitError(error)) {
       throw new GeminiApiError(RATE_LIMIT_MESSAGE, 429);
     }
-    if (retries <= 0) {
-      // Wrap in GeminiApiError so components always get a safe .message
-      throw new GeminiApiError(error?.message || 'API call failed after all retries.', error?.status ?? 0);
-    }
-    console.warn(`API call failed, retrying in ${delay}ms... (${retries} retries left)`, error);
-    await new Promise(resolve => setTimeout(resolve, delay));
-    return callWithRetry(fn, retries - 1, delay * 2);
+    throw new GeminiApiError(error?.message || 'API call failed.', error?.status ?? 0);
   }
 }
 
@@ -506,6 +513,7 @@ export const analyzeRoleplayLine = async (targetLine: string, audioBase64: strin
 
 export const generateNativeScene = async (scenario: string, level: ProficiencyLevel): Promise<NativeScene> => {
   return callWithRetry(async () => {
+    traceRequest(`generateNativeScene | scenario="${scenario.substring(0, 40)}" | level=${level}`);
     const ai = getAI();
     const levelInstructions = {
       [ProficiencyLevel.Beginner]: "Simple, literal language. No slang. Slow, clear sentences.",
@@ -539,6 +547,7 @@ export const generateNativeScene = async (scenario: string, level: ProficiencyLe
 
 export const generateSceneImage = async (imagePrompt: string): Promise<string> => {
   return callWithRetry(async () => {
+    traceRequest(`generateSceneImage | prompt="${imagePrompt.substring(0, 40)}"`);
     const ai = getAI();
     // Use gemini-2.5-flash-image for image generation (as requested by user guidelines for 'nano banana')
     const response = await ai.models.generateContent({
@@ -559,7 +568,6 @@ export const generateMultiSpeakerAudio = async (script: SceneScriptPart[], level
   const audioPromises = script.map(async (part, i) => {
     return callWithRetry(async () => {
       const voice = i % 2 === 0 ? 'Kore' : 'Puck';
-      // Use gemini-2.5-flash-preview-tts for TTS tasks
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash-preview-tts",
         contents: [{ parts: [{ text: `Say this in a ${speed} American voice: ${part.text}` }] }],
@@ -577,6 +585,44 @@ export const generateMultiSpeakerAudio = async (script: SceneScriptPart[], level
   });
 
   return await Promise.all(audioPromises);
+};
+
+/**
+ * Sequential TTS generator — avoids concurrent API burst.
+ * Generates one audio line at a time with a 200ms gap between requests.
+ * Prevents the "6 simultaneous TTS calls" pattern that trips free-tier rate limits.
+ */
+export const generateMultiSpeakerAudioSequential = async (script: SceneScriptPart[], level: ProficiencyLevel): Promise<AudioBuffer[]> => {
+  const ai = getAI();
+  const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+  const speed = level === ProficiencyLevel.Beginner ? "slow" : level === ProficiencyLevel.Intermediate ? "natural" : "fast";
+  const results: AudioBuffer[] = [];
+
+  for (let i = 0; i < script.length; i++) {
+    const part = script[i];
+    const voice = i % 2 === 0 ? 'Kore' : 'Puck';
+
+    const buffer = await callWithRetry(async () => {
+      traceRequest(`TTS-sequential | line=${i}/${script.length} | voice=${voice}`);
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash-preview-tts",
+        contents: [{ parts: [{ text: `Say this in a ${speed} American voice: ${part.text}` }] }],
+        config: {
+          responseModalities: [Modality.AUDIO],
+          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } }
+        }
+      });
+      const data = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+      if (data) return await decodeAudioData(decode(data), audioContext, 24000, 1);
+      throw new Error("TTS generation failed for line " + i);
+    });
+
+    results.push(buffer);
+    // 200ms pause between TTS requests to stay within the per-minute quota window
+    if (i < script.length - 1) await new Promise(r => setTimeout(r, 200));
+  }
+
+  return results;
 };
 
 export const coachSceneQuestion = async (question: string, scene: NativeScene): Promise<{ text: string, audio: AudioBuffer }> => {
@@ -606,6 +652,7 @@ export const coachSceneQuestion = async (question: string, scene: NativeScene): 
 
 export const generateNativeAudio = async (text: string): Promise<AudioBuffer> => {
   return callWithRetry(async () => {
+    traceRequest(`generateNativeAudio | text="${text.substring(0, 40)}"`);
     const ai = getAI();
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
