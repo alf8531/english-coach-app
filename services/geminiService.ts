@@ -515,10 +515,11 @@ export const generateNativeScene = async (scenario: string, level: ProficiencyLe
   return callWithRetry(async () => {
     traceRequest(`generateNativeScene | scenario="${scenario.substring(0, 40)}" | level=${level}`);
     const ai = getAI();
-    const levelInstructions = {
+    const levelInstructions: Record<ProficiencyLevel, string> = {
       [ProficiencyLevel.Beginner]: "Simple, literal language. No slang. Slow, clear sentences.",
       [ProficiencyLevel.Intermediate]: "Natural speed. Use common phrasal verbs and standard reductions (wanna, gotta).",
-      [ProficiencyLevel.Advanced]: "Native speed. Heavy slang, cultural nuances, and complex phonetic linking."
+      [ProficiencyLevel.Advanced]: "Native speed. Heavy slang, cultural nuances, and complex phonetic linking.",
+      [ProficiencyLevel.Native]: "Hyper-native speed. Dense idioms, strong reductions, connected speech, and colloquial expressions only a true native speaker would use."
     };
 
     const prompt = `Act as an American English Scriptwriter. Create a native dialogue scene.
@@ -549,14 +550,23 @@ export const generateSceneImage = async (imagePrompt: string): Promise<string> =
   return callWithRetry(async () => {
     traceRequest(`generateSceneImage | prompt="${imagePrompt.substring(0, 40)}"`);
     const ai = getAI();
-    // Use gemini-2.5-flash-image for image generation (as requested by user guidelines for 'nano banana')
+    // Use gemini-2.5-flash-image (Nano Banana) for native image generation.
+    // IMPORTANT: This model requires responseModalities: ['IMAGE'] — NOT imageConfig.
+    // imageConfig is only for the Imagen3 API (ai.models.generateImages), not generateContent.
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
       contents: `Cinematic wide shot, American atmosphere: ${imagePrompt}`,
-      config: { imageConfig: { aspectRatio: "16:9" } }
+      config: {
+        responseModalities: ['IMAGE'],
+      }
     });
-    const part = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
-    return part ? `data:image/png;base64,${part.inlineData.data}` : "";
+    const part = response.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
+    if (part?.inlineData?.data) {
+      return `data:image/png;base64,${part.inlineData.data}`;
+    }
+    // Graceful fallback: image gen failed but we allow the simulation to continue without an image
+    console.warn('[generateSceneImage] No image data returned — continuing without scene image.');
+    return "";
   });
 };
 
