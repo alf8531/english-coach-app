@@ -6,10 +6,10 @@ import { decode, decodeAudioData } from "./audioUtils";
 // ==========================================
 // CENTRAL CONFIGURATION (STRICT)
 // ==========================================
-// Using gemini-1.5-flash for all text/multimodal tasks.
-// This is the quota-friendly stable model: 15 RPM on the free tier vs ~2 RPM for preview models.
-// gemini-2.5-flash-preview-tts is kept only for TTS tasks (no equivalent in 1.5).
-const CURRENT_MODEL_NAME = "gemini-1.5-flash";
+// Using gemini-2.5-flash for all text/multimodal tasks.
+// This is the quota-friendly stable model.
+// gemini-2.5-flash-preview-tts is kept only for TTS tasks.
+const CURRENT_MODEL_NAME = "gemini-2.5-flash";
 
 // ==========================================
 // GLOBAL ERROR HANDLING
